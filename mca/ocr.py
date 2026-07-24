@@ -56,24 +56,38 @@ def _osd_rotation(png: Path, threshold: float) -> int:
 def prerotate(src: Path, dst: Path, threshold: float = 4.0, dpi: int = 200) -> list[int]:
     """Rotate each page to upright per tesseract OSD; write to ``dst``.
 
+    A document is scanned in a single orientation, so pages whose orientation
+    can't be detected (blank pages, decorative covers) inherit the document's
+    dominant rotation when that rotation covers most pages.
+
     Returns the per-page rotation actually applied (0/90/180/270).
     """
-    rotations: list[int] = []
+    from collections import Counter
+
     tmp = Path(tempfile.gettempdir())
     with fitz.open(src) as doc:
+        raw: list[int] = []
         for page in doc:
             pix = page.get_pixmap(dpi=dpi)
             p = tmp / f"_osd_{abs(hash(str(src)))%99999}_{page.number}.png"
             pix.save(p)
             try:
-                rot = _osd_rotation(p, threshold)
+                raw.append(_osd_rotation(p, threshold))
             finally:
                 p.unlink(missing_ok=True)
+
+        applied = list(raw)
+        nonzero = [r for r in raw if r]
+        if nonzero:
+            dominant, count = Counter(nonzero).most_common(1)[0]
+            if count >= 0.6 * len(raw):  # a strongly consistent orientation
+                applied = [r if r else dominant for r in raw]
+
+        for page, rot in zip(doc, applied):
             if rot:
                 page.set_rotation((page.rotation + rot) % 360)
-            rotations.append(rot)
         doc.save(dst)
-    return rotations
+    return applied
 
 
 def ocr_pdf(
@@ -97,7 +111,9 @@ def ocr_pdf(
         else:
             working = Path(td) / "prerot.pdf"
             rotations = prerotate(src, working, threshold=rotate_threshold)
-            variant = ["--deskew", "--force-ocr"]
+            # hocr renderer embeds a proper character map; the default renderer
+            # produces unsearchable text (broken ToUnicode) on some scans.
+            variant = ["--deskew", "--force-ocr", "--pdf-renderer", "hocr"]
 
         # Primary attempt: archival PDF/A.
         proc = _run(base + variant + ["--output-type", "pdfa", str(working), str(dst)])

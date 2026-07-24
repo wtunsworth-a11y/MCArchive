@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+# working folders for local processing
+in/
+out/
+*.pdf
+!tests/**/*.pdf

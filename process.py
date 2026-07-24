@@ -23,18 +23,24 @@ def main() -> int:
     ap.add_argument("--jobs", "-j", type=int, default=2, help="OCR worker threads per file")
     ap.add_argument("--rotate-threshold", type=float, default=4.0,
                     help="min OSD confidence to auto-rotate a page (default 4.0)")
+    ap.add_argument("--no-ocr-images", action="store_true",
+                    help="catalogue image files instead of OCR-ing them (faster for large photo sets)")
     ap.add_argument("--name", default="MCA Document Archive", help="archive title for the index")
     args = ap.parse_args()
 
     records = process_folder(
         args.input, args.output,
         language=args.language, jobs=args.jobs,
-        rotate_threshold=args.rotate_threshold, folder_name=args.name,
+        rotate_threshold=args.rotate_threshold, ocr_images=not args.no_ocr_images,
+        folder_name=args.name,
     )
     ok = sum(1 for r in records if r.ok)
     dup = sum(1 for r in records if r.duplicate_group)
+    imgs = sum(1 for r in records if r.is_image and r.ok)
     print(f"\nDone: {ok}/{len(records)} processed, {dup} flagged as possible duplicates.")
     print(f"Index: {args.output}/index.html")
+    if imgs:
+        print(f"Image tagging sheet ({imgs} images): {args.output}/image_tagging.html")
     return 0
 
 

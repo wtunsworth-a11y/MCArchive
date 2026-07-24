@@ -37,6 +37,9 @@ def build_index(docs: list[dict], folder_name: str = "Document Archive") -> str:
             "id": d["id"],
             "title": d.get("title") or d.get("source_name", ""),
             "source_name": d.get("source_name", ""),
+            "folder": d.get("rel_folder", ""),
+            "type": d.get("file_type", ""),
+            "action": d.get("action", ""),
             "keywords": d.get("keywords", []),
             "dates": d.get("dates", []),
             "pages": d.get("pages", 0),
@@ -171,7 +174,7 @@ function render(){{
   results.innerHTML = '';
   DOCS.forEach(doc => {{
     if(dupOnly.checked && !doc.dup_group) return;
-    const hay = (doc.title+' '+doc.source_name+' '+doc.keywords.join(' ')+' '+doc.text).toLowerCase();
+    const hay = (doc.title+' '+doc.source_name+' '+doc.folder+' '+doc.keywords.join(' ')+' '+doc.text).toLowerCase();
     if(terms.length && !terms.every(t => hay.includes(t))) return;
     shown++;
     const context = terms.length ? matchContext(doc, terms) : doc.snippet;
@@ -183,16 +186,21 @@ function render(){{
     const chips = doc.keywords.map(k =>
       `<span class="chip k" data-k="${{esc(k)}}">${{highlight(k, terms)}}</span>`).join('');
     const dates = doc.dates.length ? `<span>📅 ${{esc(doc.dates.join(', '))}}</span>` : '';
+    const typeBadge = doc.type ? `<span class="chip" style="text-transform:uppercase">${{esc(doc.type)}}</span>` : '';
+    const catalogued = doc.action === 'catalogued'
+      ? '<span title="listed only; not converted">🗂 catalogued</span>' : '';
+    const folder = doc.folder ? `<span title="folder">📁 ${{esc(doc.folder)}}</span>` : '';
+    const pages = doc.pages ? `<span>📄 ${{doc.pages}} pp</span>` : '';
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `
       ${{dupBadge}}
       <h2>${{link}}</h2>
-      <div class="meta"><span>📄 ${{doc.pages}} pp</span><span>${{esc(doc.size)}}</span>
-        <span title="original file">${{esc(doc.source_name)}}</span>${{dates}}
-        ${{doc.rotated?'<span>↻ rotation corrected</span>':''}}</div>
+      <div class="meta">${{pages}}<span>${{esc(doc.size)}}</span>
+        <span title="original file">${{esc(doc.source_name)}}</span>${{folder}}${{dates}}
+        ${{doc.rotated?'<span>↻ rotation corrected</span>':''}}${{catalogued}}</div>
       <div class="snippet">${{highlight(context, terms)}}</div>
-      <div class="chips">${{chips}}</div>`;
+      <div class="chips">${{typeBadge}}${{chips}}</div>`;
     results.appendChild(card);
   }});
   count.textContent = shown + ' / ' + DOCS.length + ' shown';

@@ -1,20 +1,36 @@
 # MCA Document Archive
 
-A processing pipeline that turns a folder of **scanned PDFs** into a clean,
-searchable, archival document collection:
+A processing pipeline that turns a folder tree of **mixed scanned & digital
+documents** into a clean, searchable, archival collection. It walks subfolders
+and handles each file by type:
+
+| Input | Handling |
+|-------|----------|
+| Scanned PDF | auto-rotate + deskew + OCR → PDF/A, tag |
+| Digital PDF | OCR-skip-text (kept as-is) → PDF/A, tag |
+| Scanned image (JPG/BMP/TIFF/PNG) | wrap to PDF → OCR → PDF/A, tag |
+| Word / PowerPoint / Excel / RTF | convert to PDF (LibreOffice) → tag |
+| Photo / video / audio | catalogued (listed, not converted) |
+| `Thumbs.db`, `.DS_Store`, temp files | skipped |
+
+Pipeline stages:
 
 1. **Auto-rotate & deskew** — pages scanned sideways or upside-down are
-   straightened using tesseract orientation detection.
+   straightened using tesseract orientation detection (tunable threshold).
 2. **OCR** — an invisible text layer is added so every document is fully
    searchable, and files are saved as **PDF/A-2B** (the archival standard).
 3. **Keyword tagging** — a title, keywords and any dates are inferred from the
-   OCR text and embedded in each PDF's metadata (`/Title`, `/Keywords`, XMP).
+   text and embedded in each PDF's metadata (`/Title`, `/Keywords`, XMP).
 4. **Duplicate flagging** — exact copies (byte hash) and near-duplicate
-   re-scans (OCR-text similarity) are detected and **flagged for review — never
+   re-scans (text similarity) are detected and **flagged for review — never
    deleted**.
 5. **Searchable HTML index** — a single self-contained `index.html` with all
-   document metadata and full text embedded, plus a client-side search box and
-   a "duplicates only" filter. No server required; works locally or from Drive.
+   document metadata and full text embedded, plus a client-side search box,
+   folder/type facets and a "duplicates only" filter. No server required.
+6. **Image tagging sheet** — `image_tagging.html`, a self-contained form for a
+   person to record the **event, people, place, date and notes** for every
+   image/map. Entries autosave in the browser and export to JSON/CSV to be
+   merged back into the index and image metadata.
 
 ## Usage
 
@@ -46,11 +62,12 @@ on re-runs, so you can safely re-process a folder as new scans are added.
 ## Requirements
 
 System: `tesseract-ocr` (+ `osd` data), `ghostscript`, `poppler-utils`,
-`qpdf`, `unpaper`, `pngquant`.
+`qpdf`, `unpaper`, `pngquant`, and `libreoffice` (for Office→PDF conversion).
 Python: see `requirements.txt` (`ocrmypdf`, `PyMuPDF`, `pikepdf`, `Pillow`).
 
 ```bash
-sudo apt-get install -y tesseract-ocr ghostscript poppler-utils qpdf unpaper pngquant
+sudo apt-get install -y tesseract-ocr ghostscript poppler-utils qpdf unpaper pngquant \
+    libreoffice-writer libreoffice-impress libreoffice-calc
 pip install -r requirements.txt
 ```
 
@@ -58,12 +75,15 @@ pip install -r requirements.txt
 
 ```
 mca/
+  inputs.py     file classification + image→PDF normalisation
+  office.py     Office → PDF conversion (LibreOffice headless)
   ocr.py        rotate + deskew + OCR (ocrmypdf), OSD rotation detection
-  text.py       OCR text extraction, keyword/title/date inference
+  text.py       text extraction, keyword/title/date inference
   metadata.py   embed title/keywords/subject into PDF (docinfo + XMP)
   dedup.py      exact + near-duplicate detection (flag, don't delete)
   index.py      self-contained searchable HTML index
-  pipeline.py   orchestration over a local folder
+  tagger.py     image/map metadata tagging sheet (event/people/place)
+  pipeline.py   orchestration over a local folder tree
 process.py      command-line entry point
 ```
 

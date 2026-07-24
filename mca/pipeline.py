@@ -49,6 +49,8 @@ class DocRecord:
     text: str = ""
     size_bytes: int = 0
     is_image: bool = False
+    ocr_quality: float = 1.0
+    ocr_low: bool = False
     title_flag: str = ""          # "" | generic | mismatch
     title_reason: str = ""
     title_suggested: str = ""
@@ -166,8 +168,11 @@ def _process_to_searchable_pdf(src, rel, output_dir, rec, language, jobs,
         rec.rotations = res.rotations
         rec.rotated = res.rotated
 
-    body = text.extract_text(out_path)
+    body = res.text.strip() or text.extract_text(out_path)
     rec.pages = text.page_count(out_path)
+    rec.ocr_quality = text.ocr_quality(body)
+    if rec.action != "office" and rec.ocr_quality < 0.35 and rec.pages:
+        rec.ocr_low = True
     rec.keywords = text.extract_keywords(body)
     rec.title = text.guess_title(body, rec.source_name)
     rec.dates = text.extract_dates(body)
@@ -189,9 +194,10 @@ def _process_to_searchable_pdf(src, rel, output_dir, rec, language, jobs,
     except Exception as e:
         log(f"    ~ metadata embed skipped: {e}")
 
-    rot = f", rotated {[r for r in rec.rotations if r]}" if rec.rotated else ""
+    dom = f", rot {rec.rotations[0]}°" if rec.rotated else ""
     extra = " (from office)" if rec.action == "office" else (" (from image)" if rec.is_image else "")
-    log(f"    ok ({rec.pages}pp, {res.mode}{rot}){extra} keywords: {', '.join(rec.keywords[:6])}")
+    q = f" ⚠LOW-OCR(q={rec.ocr_quality})" if rec.ocr_low else ""
+    log(f"    ok ({rec.pages}pp, {res.mode}{dom}){extra}{q} keywords: {', '.join(rec.keywords[:6])}")
 
 
 def _flag_duplicates(records: list[DocRecord], log=print) -> None:

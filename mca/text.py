@@ -84,3 +84,20 @@ def extract_dates(text: str, limit: int = 5) -> list[str]:
 def snippet(text: str, length: int = 300) -> str:
     clean = re.sub(r"\s+", " ", text).strip()
     return clean[:length]
+
+
+_VOWELS = set("aeiouAEIOU")
+
+
+def ocr_quality(text: str) -> float:
+    """Rough 0–1 confidence that OCR text is real language, not noise.
+
+    Real English words contain vowels and are mostly letters; OCR failures on
+    misrotated or faint scans produce vowel-poor noise ("xxq vxt", "kgk gnk").
+    Scored as the fraction of alphabetic word-tokens that contain a vowel.
+    """
+    tokens = re.findall(r"[A-Za-z]{2,}", text)
+    if len(tokens) < 5:
+        return 0.0 if text.strip() else 1.0  # too little text to judge
+    with_vowel = sum(1 for t in tokens if any(c in _VOWELS for c in t))
+    return round(with_vowel / len(tokens), 3)

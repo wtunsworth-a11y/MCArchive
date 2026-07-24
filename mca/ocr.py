@@ -30,6 +30,7 @@ class OcrResult:
     output_type: str = ""     # "pdfa" | "pdf"
     rotations: list[int] = field(default_factory=list)
     rotated: bool = False
+    text: str = ""            # OCR sidecar text (scanned path); "" for digital
     error: str = ""
 
 
@@ -80,8 +81,11 @@ def prerotate(src: Path, dst: Path, threshold: float = 4.0, dpi: int = 200) -> l
         nonzero = [r for r in raw if r]
         if nonzero:
             dominant, count = Counter(nonzero).most_common(1)[0]
-            if count >= 0.6 * len(raw):  # a strongly consistent orientation
-                applied = [r if r else dominant for r in raw]
+            if count >= 0.6 * len(raw):
+                # Strongly consistent orientation: the whole document was
+                # scanned one way, so apply it uniformly. This overrides the
+                # occasional per-page OSD misfire (e.g. calling a 180° page 90°).
+                applied = [dominant] * len(raw)
 
         for page, rot in zip(doc, applied):
             if rot:
@@ -105,26 +109,29 @@ def ocr_pdf(
     base = ["ocrmypdf", "-l", language, "--jobs", str(jobs), "--quiet"]
 
     with tempfile.TemporaryDirectory() as td:
+        sidecar = Path(td) / "sidecar.txt"
         if digital:
+            # Existing text layer — keep it; only OCR any image-only pages.
             working, rotations = src, []
             variant = ["--skip-text"]
+            out_type = "pdfa"
         else:
             working = Path(td) / "prerot.pdf"
             rotations = prerotate(src, working, threshold=rotate_threshold)
-            # hocr renderer embeds a proper character map; the default renderer
-            # produces unsearchable text (broken ToUnicode) on some scans.
-            variant = ["--deskew", "--force-ocr", "--pdf-renderer", "hocr"]
+            # hocr renderer + plain PDF keeps the OCR text searchable (the
+            # default renderer / PDF-A step break ToUnicode on some scans);
+            # the sidecar gives us tesseract's text directly for indexing.
+            variant = ["--deskew", "--force-ocr", "--pdf-renderer", "hocr",
+                       "--sidecar", str(sidecar)]
+            out_type = "pdf"
 
-        # Primary attempt: archival PDF/A.
-        proc = _run(base + variant + ["--output-type", "pdfa", str(working), str(dst)])
-        if proc.returncode == 0:
-            return OcrResult(True, "digital" if digital else "scanned", "pdfa",
-                             rotations, any(r % 360 for r in rotations))
+        rotated = any(r % 360 for r in rotations)
+        mode = "digital" if digital else "scanned"
 
-        # Fallback: plain PDF (more tolerant of odd input).
-        proc2 = _run(base + variant + ["--output-type", "pdf", str(working), str(dst)])
-        if proc2.returncode == 0:
-            return OcrResult(True, "digital" if digital else "scanned", "pdf",
-                             rotations, any(r % 360 for r in rotations))
+        for otype in (out_type, "pdf"):  # fall back to plain PDF on failure
+            proc = _run(base + variant + ["--output-type", otype, str(working), str(dst)])
+            if proc.returncode == 0:
+                txt = sidecar.read_text(errors="ignore") if sidecar.exists() else ""
+                return OcrResult(True, mode, otype, rotations, rotated, text=txt)
 
-        return OcrResult(False, error=((proc.stderr or "") + "\n---\n" + (proc2.stderr or "")).strip())
+        return OcrResult(False, error=(proc.stderr or "unknown").strip())

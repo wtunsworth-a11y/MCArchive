@@ -24,10 +24,15 @@ Pipeline stages:
 4. **Duplicate flagging** — exact copies (byte hash) and near-duplicate
    re-scans (text similarity) are detected and **flagged for review — never
    deleted**.
-5. **Searchable HTML index** — a single self-contained `index.html` with all
+5. **Misleading-title check** — a file whose name is generic (`scan001`,
+   `IMG_1234`, a bare date) or whose topic words don't appear anywhere in the
+   document is **flagged with a suggested content-based title** for review
+   (nothing is auto-renamed). Document-type words (letter, report, minutes…)
+   are recognised so descriptive names aren't falsely flagged.
+6. **Searchable HTML index** — a single self-contained `index.html` with all
    document metadata and full text embedded, plus a client-side search box,
-   folder/type facets and a "duplicates only" filter. No server required.
-6. **Image tagging sheet** — `image_tagging.html`, a self-contained form for a
+   folder/type facets, and "duplicates only" / "titles to review" filters.
+7. **Image tagging sheet** — `image_tagging.html`, a self-contained form for a
    person to record the **event, people, place, date and notes** for every
    image/map. Entries autosave in the browser and export to JSON/CSV to be
    merged back into the index and image metadata.
@@ -81,6 +86,7 @@ mca/
   text.py       text extraction, keyword/title/date inference
   metadata.py   embed title/keywords/subject into PDF (docinfo + XMP)
   dedup.py      exact + near-duplicate detection (flag, don't delete)
+  titles.py     misleading-filename check + suggested content title
   index.py      self-contained searchable HTML index
   tagger.py     image/map metadata tagging sheet (event/people/place)
   pipeline.py   orchestration over a local folder tree

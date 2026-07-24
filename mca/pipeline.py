@@ -23,7 +23,7 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from . import dedup, index, inputs, metadata, ocr, office, tagger, text
+from . import dedup, index, inputs, metadata, ocr, office, tagger, text, titles
 
 
 @dataclass
@@ -49,6 +49,9 @@ class DocRecord:
     text: str = ""
     size_bytes: int = 0
     is_image: bool = False
+    title_flag: str = ""          # "" | generic | mismatch
+    title_reason: str = ""
+    title_suggested: str = ""
     duplicate_group: int | None = None
     duplicate_kind: str = ""
     duplicate_matches: list[str] = field(default_factory=list)
@@ -176,6 +179,14 @@ def _process_to_searchable_pdf(src, rel, output_dir, rec, language, jobs,
     rec.snippet = text.snippet(body)
     rec.text = body
     rec.size_bytes = out_path.stat().st_size
+
+    tc = titles.check_title(rec.source_name, body, rec.keywords, rec.title)
+    rec.title_flag = tc["flag"]
+    rec.title_reason = tc["reason"]
+    rec.title_suggested = tc["suggested"]
+    if tc["flag"]:
+        log(f"    ⚠ title check: {tc['reason']}"
+            + (f" → suggested: {tc['suggested']}" if tc["suggested"] else ""))
 
     try:
         metadata.apply_metadata(out_path, rec.title, rec.keywords,

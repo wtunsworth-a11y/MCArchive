@@ -28,6 +28,7 @@ def build_index(docs: list[dict], folder_name: str = "Document Archive") -> str:
     total = len(docs)
     dup_docs = sum(1 for d in docs if d.get("duplicate_group"))
     dup_groups = len({d["duplicate_group"] for d in docs if d.get("duplicate_group")})
+    title_flagged = sum(1 for d in docs if d.get("title_flag"))
     total_pages = sum(d.get("pages", 0) for d in docs)
 
     # Embed a trimmed record (cap OCR text so the file stays manageable).
@@ -51,6 +52,9 @@ def build_index(docs: list[dict], folder_name: str = "Document Archive") -> str:
             "dup_kind": d.get("duplicate_kind", ""),
             "dup_matches": d.get("duplicate_matches", []),
             "rotated": d.get("rotated", False),
+            "title_flag": d.get("title_flag", ""),
+            "title_reason": d.get("title_reason", ""),
+            "title_suggested": d.get("title_suggested", ""),
         })
 
     data_json = json.dumps(payload, ensure_ascii=False)
@@ -63,6 +67,7 @@ def build_index(docs: list[dict], folder_name: str = "Document Archive") -> str:
         total_pages=total_pages,
         dup_docs=dup_docs,
         dup_groups=dup_groups,
+        title_flagged=title_flagged,
         data_json=data_json,
     )
 
@@ -113,9 +118,11 @@ _TEMPLATE = r"""<!DOCTYPE html>
   .chip {{ background:var(--chip); color:var(--chip-ink); border-radius:20px;
           padding:2px 10px; font-size:12px; }}
   .chip.k {{ cursor:pointer; }}
-  .dup {{ display:inline-block; background:var(--warn-bg); color:var(--warn-ink);
-         border:1px solid var(--warn-line); border-radius:6px; padding:1px 8px;
-         font-size:11.5px; font-weight:600; margin-bottom:8px; }}
+  .dup {{ display:block; background:var(--warn-bg); color:var(--warn-ink);
+         border:1px solid var(--warn-line); border-radius:6px; padding:2px 8px;
+         font-size:11.5px; font-weight:600; margin-bottom:6px; }}
+  .dup.title {{ background:var(--chip); color:var(--chip-ink); border-color:transparent; font-weight:500; }}
+  .dup.title b {{ font-weight:700; }}
   mark {{ background:#ffe58a; color:#3a2d00; padding:0 1px; border-radius:2px; }}
   .empty {{ text-align:center; color:var(--muted); padding:50px 0; }}
   footer {{ text-align:center; color:var(--muted); font-size:12px; padding:24px; }}
@@ -127,11 +134,13 @@ _TEMPLATE = r"""<!DOCTYPE html>
   <div class="stats">
     <b>{total}</b> documents &middot; <b>{total_pages}</b> pages &middot;
     <b>{dup_docs}</b> possible duplicates in <b>{dup_groups}</b> group(s) &middot;
+    <b>{title_flagged}</b> titles to review &middot;
     indexed {generated}
   </div>
   <input id="q" type="search" placeholder="Search titles, keywords and full text…" autofocus>
   <div class="toolbar">
-    <label><input type="checkbox" id="dupOnly"> show only possible duplicates</label>
+    <label><input type="checkbox" id="dupOnly"> possible duplicates only</label>
+    <label><input type="checkbox" id="titleOnly"> titles to review only</label>
     <span id="count"></span>
   </div>
 </header>
@@ -143,6 +152,7 @@ const DOCS = {data_json};
 const results = document.getElementById('results');
 const q = document.getElementById('q');
 const dupOnly = document.getElementById('dupOnly');
+const titleOnly = document.getElementById('titleOnly');
 const count = document.getElementById('count');
 
 function esc(s){{ return (s||'').replace(/[&<>"]/g, c => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c])); }}
@@ -174,12 +184,15 @@ function render(){{
   results.innerHTML = '';
   DOCS.forEach(doc => {{
     if(dupOnly.checked && !doc.dup_group) return;
+    if(titleOnly.checked && !doc.title_flag) return;
     const hay = (doc.title+' '+doc.source_name+' '+doc.folder+' '+doc.keywords.join(' ')+' '+doc.text).toLowerCase();
     if(terms.length && !terms.every(t => hay.includes(t))) return;
     shown++;
     const context = terms.length ? matchContext(doc, terms) : doc.snippet;
     const dupBadge = doc.dup_group
       ? `<div class="dup">⚠ Possible ${{doc.dup_kind}} duplicate (group ${{doc.dup_group}}) — matches: ${{esc(doc.dup_matches.join(', '))}}</div>` : '';
+    const titleBadge = doc.title_flag
+      ? `<div class="dup title">✎ Title to review — ${{esc(doc.title_reason)}}${{doc.title_suggested?`. Suggested: <b>${{esc(doc.title_suggested)}}</b>`:''}}</div>` : '';
     const link = doc.url
       ? `<a href="${{esc(doc.url)}}" target="_blank" rel="noopener">${{highlight(doc.title, terms)}}</a>`
       : highlight(doc.title, terms);
@@ -194,7 +207,7 @@ function render(){{
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `
-      ${{dupBadge}}
+      ${{dupBadge}}${{titleBadge}}
       <h2>${{link}}</h2>
       <div class="meta">${{pages}}<span>${{esc(doc.size)}}</span>
         <span title="original file">${{esc(doc.source_name)}}</span>${{folder}}${{dates}}
@@ -213,6 +226,7 @@ results.addEventListener('click', e => {{
 }});
 q.addEventListener('input', render);
 dupOnly.addEventListener('change', render);
+titleOnly.addEventListener('change', render);
 render();
 </script>
 </body>

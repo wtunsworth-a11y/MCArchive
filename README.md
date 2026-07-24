@@ -24,11 +24,13 @@ Pipeline stages:
 4. **Duplicate flagging** — exact copies (byte hash) and near-duplicate
    re-scans (text similarity) are detected and **flagged for review — never
    deleted**.
-5. **Misleading-title check** — a file whose name is generic (`scan001`,
-   `IMG_1234`, a bare date) or whose topic words don't appear anywhere in the
-   document is **flagged with a suggested content-based title** for review
-   (nothing is auto-renamed). Document-type words (letter, report, minutes…)
-   are recognised so descriptive names aren't falsely flagged.
+5. **Title adequacy check** — flags titles that are *generic* (`scan001`,
+   `IMG_1234`, a bare date), a content *mismatch* (name's topic absent from the
+   document), or *insufficient* (only a document type like "request letter" or
+   "MoA", with no subject or parties). For each it composes a descriptive
+   **"what + who" suggested title** from the content — document type, the
+   parties/sender, the subject and year — for review. Nothing is auto-renamed;
+   the suggestion is a first draft to accept or edit.
 6. **Searchable HTML index** — a single self-contained `index.html` with all
    document metadata and full text embedded, plus a client-side search box,
    folder/type facets, and "duplicates only" / "titles to review" filters.

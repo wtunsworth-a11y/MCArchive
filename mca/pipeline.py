@@ -154,13 +154,6 @@ def _process_to_searchable_pdf(src, rel, output_dir, rec, language, jobs,
                 return
             pdf_src = inputs.image_to_pdf(src, Path(td) / "img.pdf")
 
-        # rotation detection (reporting only) then OCR
-        try:
-            rec.rotations = ocr.detect_page_rotations(pdf_src, threshold=rotate_threshold)
-            rec.rotated = any(r % 360 != 0 for r in rec.rotations)
-        except Exception:
-            rec.rotations = []
-
         res = ocr.ocr_pdf(pdf_src, out_path, language=language, jobs=jobs,
                           rotate_threshold=rotate_threshold)
         if not res.ok:
@@ -170,6 +163,8 @@ def _process_to_searchable_pdf(src, rel, output_dir, rec, language, jobs,
             return
         rec.ocr_mode = res.mode
         rec.output_type = res.output_type
+        rec.rotations = res.rotations
+        rec.rotated = res.rotated
 
     body = text.extract_text(out_path)
     rec.pages = text.page_count(out_path)

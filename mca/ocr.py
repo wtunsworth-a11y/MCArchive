@@ -34,8 +34,15 @@ class OcrResult:
     error: str = ""
 
 
-def _run(cmd: list[str]) -> subprocess.CompletedProcess:
-    return subprocess.run(cmd, capture_output=True, text=True)
+def _run(cmd: list[str], timeout: int | None = None) -> subprocess.CompletedProcess:
+    """Run a command, never hanging forever. On timeout, return a failed result
+    (some PDFs make ocrmypdf/tesseract stall indefinitely)."""
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as e:
+        return subprocess.CompletedProcess(
+            cmd, returncode=124, stdout=e.stdout or "",
+            stderr=(e.stderr or "") + f"\nTIMEOUT after {timeout}s")
 
 
 def _text_length(pdf: Path) -> int:
@@ -44,7 +51,7 @@ def _text_length(pdf: Path) -> int:
 
 
 def _osd_rotation(png: Path, threshold: float) -> int:
-    proc = _run(["tesseract", str(png), "-", "--psm", "0"])
+    proc = _run(["tesseract", str(png), "-", "--psm", "0"], timeout=60)
     out = proc.stdout + proc.stderr
     rot = conf = 0.0
     if m := re.search(r"Rotate:\s*(\d+)", out):
@@ -128,8 +135,18 @@ def ocr_pdf(
         rotated = any(r % 360 for r in rotations)
         mode = "digital" if digital else "scanned"
 
+        # Bound each OCR pass so a single malformed PDF can't stall the batch.
+        pages = 0
+        try:
+            with fitz.open(working) as _d:
+                pages = _d.page_count
+        except Exception:
+            pass
+        ocr_timeout = max(300, min(1800, pages * 25)) if pages else 600
+
         for otype in (out_type, "pdf"):  # fall back to plain PDF on failure
-            proc = _run(base + variant + ["--output-type", otype, str(working), str(dst)])
+            proc = _run(base + variant + ["--output-type", otype, str(working), str(dst)],
+                        timeout=ocr_timeout)
             if proc.returncode == 0:
                 txt = sidecar.read_text(errors="ignore") if sidecar.exists() else ""
                 return OcrResult(True, mode, otype, rotations, rotated, text=txt)

@@ -70,6 +70,23 @@ QABB references from Christine and David Mitchell
      is possible, but the improved file can't be written back to Drive here. They remain
      fully browsable as the original scans; they are just not full-text searchable.
 
+## Finishing the scanned documents (OCR)
+The bytes of the scanned files can't leave Drive from this session — the MCP download
+tool only returns base64 through the model context (too large for even a 1 MB PDF) and
+direct `drive.google.com` egress is blocked by policy. So OCR is done where the bytes
+already live: **`QABB_OCR_scanned_docs.ipynb`** (Google Colab), the same offline-notebook
+pattern as the image blur-scanner.
+
+Run order:
+1. Open `QABB_OCR_scanned_docs.ipynb` in Colab → Runtime ▸ Run all → approve the Drive
+   popup. It OCRs all 14 flagged files (13 scanned PDFs + the 106 MB manuscript `.docx`,
+   which it converts to PDF first), `eng+fra`, with rotate + deskew, into a new
+   **`QABB OCR output`** Drive folder (`_OCR.pdf` suffix — nothing is overwritten).
+2. It writes/downloads **`QABB_ocr_results.csv`** (original id → OCR'd id).
+3. Send that CSV back here. The OCR'd text is then read via the MCP `read_file_content`
+   tool (compact text, not bytes — that path works), and the 14 scanned entries in
+   `QABB_document_index.html` are swapped for the searchable OCR'd copies.
+
 ## Known limitation
 A few small PDFs (e.g. `Sullivan_circa_1999_Managalas.pdf`) extract with fragmented
 letter-spacing from the Drive text tool; their filename/keywords are searchable but

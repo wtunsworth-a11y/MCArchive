@@ -65,6 +65,9 @@ def main():
     pdf_copies = {r["src_id"]: r for r in load_csv(f"{WORK}/pdf_copies.csv")}
     office_pdfs = {r["src_id"]: r for r in load_csv(f"{WORK}/office_pdfs.csv")}
     img_rows = load_csv(f"{WORK}/image_copies.csv")
+    # OCR'd copies of the formerly scanned/no-text documents (source_id -> row)
+    ocr_path = f"{WORK}/ocr_results.csv"
+    ocr_map = {r["source_id"]: r for r in load_csv(ocr_path)} if os.path.exists(ocr_path) else {}
 
     docs = []
     for m in manifest:
@@ -75,9 +78,11 @@ def main():
             text = open(tpath, encoding="utf-8", errors="ignore").read()
             if text:
                 text = fix_letterspacing(text)
-        # destination url: prefer converted Office PDF, then copied PDF, then source
+        # destination url: prefer the searchable OCR'd copy, then converted Office
+        # PDF, then copied PDF, then source
+        ocr = ocr_map.get(did) if ocr_map.get(did, {}).get("ocr_id") else None
         dest = office_pdfs.get(did) or pdf_copies.get(did)
-        url = dest["new_url"] if dest else m["url"]
+        url = ocr["ocr_url"] if ocr else (dest["new_url"] if dest else m["url"])
         source_name = m["title"]
         # title: use filename stem cleaned; avoid ALL-CAPS logo lines
         title = re.sub(r"\.[A-Za-z0-9]+$", "", source_name)
@@ -98,6 +103,7 @@ def main():
             "url": url,
             "_ocrq": ocr_quality(text) if text else 0.0,
             "_chars": len(text),
+            "_ocr_applied": bool(ocr),
         })
 
     # ---- de-duplication ----
@@ -219,7 +225,13 @@ def main():
     # ---- searchable index ----
     # flag low/no-text docs in the index via title_flag mechanism (reused UI slot)
     for d in docs:
-        if d["_chars"] < 40:
+        if d["_chars"] < 40 and d.get("_ocr_applied"):
+            # OCR was run, but the file is too large to extract inline here;
+            # the text layer IS embedded, so the PDF itself is searchable.
+            d["title_flag"] = "ocrlarge"
+            d["title_reason"] = "OCR complete — text layer embedded and searchable inside the PDF; too large to index inline"
+            d["title_suggested"] = ""
+        elif d["_chars"] < 40:
             d["title_flag"] = "scanned"
             d["title_reason"] = "no extractable text yet — scanned volume; OCR pending"
             d["title_suggested"] = ""

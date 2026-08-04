@@ -70,22 +70,29 @@ QABB references from Christine and David Mitchell
      is possible, but the improved file can't be written back to Drive here. They remain
      fully browsable as the original scans; they are just not full-text searchable.
 
-## Finishing the scanned documents (OCR)
-The bytes of the scanned files can't leave Drive from this session — the MCP download
-tool only returns base64 through the model context (too large for even a 1 MB PDF) and
-direct `drive.google.com` egress is blocked by policy. So OCR is done where the bytes
-already live: **`QABB_OCR_scanned_docs.ipynb`** (Google Colab), the same offline-notebook
-pattern as the image blur-scanner.
+## Scanned documents — OCR (DONE)
+The 14 scanned / no-text files were OCR'd in the user's own Drive via
+**`QABB_OCR_scanned_docs.ipynb`** (Google Colab) — the bytes can't leave this session
+(the MCP download tool only returns base64 through the model context, too large for even
+a 1 MB PDF, and direct `drive.google.com` egress is blocked by policy), so OCR ran where
+the bytes already live. The notebook OCR'd all 14 (13 scanned PDFs + the 106 MB
+manuscript `.docx`, converted to PDF first), `eng+fra`, rotate + deskew, into a
+**`QABB OCR output`** Drive folder (`_OCR.pdf` suffix — nothing overwritten), and emitted
+**`QABB_ocr_results.csv`** (original id → OCR'd id).
 
-Run order:
-1. Open `QABB_OCR_scanned_docs.ipynb` in Colab → Runtime ▸ Run all → approve the Drive
-   popup. It OCRs all 14 flagged files (13 scanned PDFs + the 106 MB manuscript `.docx`,
-   which it converts to PDF first), `eng+fra`, with rotate + deskew, into a new
-   **`QABB OCR output`** Drive folder (`_OCR.pdf` suffix — nothing is overwritten).
-2. It writes/downloads **`QABB_ocr_results.csv`** (original id → OCR'd id).
-3. Send that CSV back here. The OCR'd text is then read via the MCP `read_file_content`
-   tool (compact text, not bytes — that path works), and the 14 scanned entries in
-   `QABB_document_index.html` are swapped for the searchable OCR'd copies.
+Those results are now folded into the index (`ocr_results.csv` in the working set):
+- **12 of 14** formerly-scanned documents are now **full-text searchable** in
+  `QABB_document_index.html`, and their entries link to the searchable `_OCR.pdf` copy.
+- **2 of 14** — `Meek_1913_Naturalist.pdf` and `O_alexandrae_MANUSCRIPT` (each ~106 MB) —
+  were OCR'd successfully (text layer embedded, so the **PDF itself is searchable** when
+  opened), but are too large for the `read_file_content` tool to extract inline, so they
+  are flagged **"OCR complete — searchable inside the PDF"** rather than indexed inline.
+- `Blandin_1973_Fr.pdf` (French) additionally has an English translation:
+  **`Blandin_1973_translation_EN.md`**.
+
+The OCR'd copies live in a separate **`QABB OCR output`** Drive folder; the index links
+there. Moving/renaming them into `QABB Indexed Documents` (to replace the scans) is a
+manual step in Drive if desired — same delete/move limitation as the duplicates.
 
 ## Known limitation
 A few small PDFs (e.g. `Sullivan_circa_1999_Managalas.pdf`) extract with fragmented

@@ -100,29 +100,93 @@ def main():
             "_chars": len(text),
         })
 
-    # ---- de-duplication (near, text-based) ----
-    dds = [DupDoc(id=d["id"], sha256="", text=d["text"]) for d in docs]
-    dup = find_duplicates(dds, near_threshold=0.80)
-    byid = {d["id"]: d for d in docs}
+    # ---- de-duplication ----
+    # Two signals, because the biggest duplicates are scanned volumes with NO
+    # extractable text (Jaccard can't see them): (a) same filename => same
+    # document; (b) text Jaccard >= 0.65 of 5-gram shingles.
+    from collections import defaultdict
+    from mca.dedup import _shingles, _tokens, _jaccard
     for d in docs:
-        info = dup[d["id"]]
-        d["duplicate_group"] = info["group"]
-        d["duplicate_kind"] = info["kind"]
-        d["duplicate_matches"] = [byid[m]["source_name"] for m in info["matches"] if m in byid]
+        d["duplicate_group"] = None
+        d["duplicate_kind"] = ""
+        d["duplicate_matches"] = []
+        d["dup_removed"] = False        # excluded from the archive as a redundant copy
+        d["dup_keep_note"] = ""
 
-    # ---- duplicate report CSV ----
-    groups = {}
+    groups = {}   # gid -> list[doc]
+    gid = 0
+    used = set()
+
+    # (a) same-name groups -> genuine duplicates; keep the most-text copy
+    byname = defaultdict(list)
     for d in docs:
-        g = d["duplicate_group"]
-        if g:
-            groups.setdefault(g, []).append(d)
+        byname[d["source_name"].lower()].append(d)
+    for name, members in byname.items():
+        if len(members) < 2:
+            continue
+        gid += 1
+        keep = max(members, key=lambda x: (x["_chars"], -x["size_bytes"]))
+        for d in members:
+            d["duplicate_group"] = gid
+            d["duplicate_kind"] = "same-name"
+            d["duplicate_matches"] = [m["source_name"] for m in members if m is not d]
+            used.add(d["id"])
+            if d is not keep:
+                d["dup_removed"] = True
+                d["dup_keep_note"] = f"redundant copy of «{keep['source_name']}» kept in {keep['rel_folder']}"
+            else:
+                d["dup_keep_note"] = "kept (best text copy)"
+        groups[gid] = members
+
+    # (b) text-similar pairs >= 0.65 among not-yet-grouped -> RELATED (keep both)
+    sh = {d["id"]: _shingles(_tokens(d["text"])) for d in docs}
+    pairs = []
+    for i in range(len(docs)):
+        a = docs[i]
+        if not sh[a["id"]]:
+            continue
+        for j in range(i + 1, len(docs)):
+            b = docs[j]
+            if not sh[b["id"]]:
+                continue
+            s = _jaccard(sh[a["id"]], sh[b["id"]])
+            if s >= 0.65:
+                pairs.append((s, a, b))
+    for s, a, b in sorted(pairs, reverse=True):
+        if a["id"] in used and b["id"] in used and a["duplicate_group"] == b["duplicate_group"] and a["duplicate_group"]:
+            continue
+        gid += 1
+        for d in (a, b):
+            d.setdefault("_relgroups", []).append(gid)
+            if not d["duplicate_group"]:
+                d["duplicate_group"] = gid
+            d["duplicate_kind"] = f"related~{s:.2f}"
+            used.add(d["id"])
+        a["duplicate_matches"] = sorted(set(a["duplicate_matches"]) | {b["source_name"]})
+        b["duplicate_matches"] = sorted(set(b["duplicate_matches"]) | {a["source_name"]})
+        groups[gid] = [a, b]
+
+    # ---- duplicate report CSV (all groups) ----
     with open(f"{HERE}/QABB_duplicate_report.csv", "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["group", "kind", "folder", "source_name", "size_bytes", "chars", "drive_url", "matches"])
+        w.writerow(["group", "kind", "decision", "folder", "source_name",
+                    "size_bytes", "chars", "drive_url", "matches"])
         for g in sorted(groups):
             for d in sorted(groups[g], key=lambda x: -x["size_bytes"]):
-                w.writerow([g, d["duplicate_kind"], d["rel_folder"], d["source_name"],
+                decision = ("REMOVE (redundant)" if d["dup_removed"]
+                            else "keep" if d["duplicate_kind"] == "same-name"
+                            else "keep (related)")
+                w.writerow([g, d["duplicate_kind"], decision, d["rel_folder"], d["source_name"],
                             d["size_bytes"], d["_chars"], d["url"], "; ".join(d["duplicate_matches"])])
+
+    # ---- explicit "delete these redundant destination copies" sheet ----
+    with open(f"{HERE}/QABB_duplicates_to_delete.csv", "w", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow(["source_name", "folder", "size_bytes", "reason", "destination_copy_url_to_delete"])
+        for d in docs:
+            if d["dup_removed"]:
+                w.writerow([d["source_name"], d["rel_folder"], d["size_bytes"],
+                            d["dup_keep_note"], d["url"]])
 
     # ---- long / awkward filename rename sheet ----
     def awkward(name):
@@ -157,13 +221,15 @@ def main():
     for d in docs:
         if d["_chars"] < 40:
             d["title_flag"] = "scanned"
-            d["title_reason"] = "no extractable text yet — scanned; OCR pending"
+            d["title_reason"] = "no extractable text yet — scanned volume; OCR pending"
             d["title_suggested"] = ""
         elif d["_ocrq"] and d["_ocrq"] < 0.6:
             d["title_flag"] = "lowocr"
             d["title_reason"] = f"low text-quality score ({d['_ocrq']}) — may need re-OCR"
             d["title_suggested"] = ""
-    html = build_index(docs, folder_name=NAME)
+    # exclude redundant duplicate copies from the searchable archive
+    docs_index = [d for d in docs if not d["dup_removed"]]
+    html = build_index(docs_index, folder_name=NAME)
     open(f"{HERE}/QABB_document_index.html", "w", encoding="utf-8").write(html)
 
     # ---- image tagging tool (with clarity flag + folder prefill) ----

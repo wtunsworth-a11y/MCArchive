@@ -90,9 +90,13 @@ Those results are now folded into the index (`ocr_results.csv` in the working se
 - `Blandin_1973_Fr.pdf` (French) additionally has an English translation:
   **`Blandin_1973_translation_EN.md`**.
 
-The OCR'd copies live in a separate **`QABB OCR output`** Drive folder; the index links
-there. Moving/renaming them into `QABB Indexed Documents` (to replace the scans) is a
-manual step in Drive if desired — same delete/move limitation as the duplicates.
+**Consolidation (done).** The 14 OCR'd PDFs were moved out of `QABB OCR output` into the
+matching `QABB Indexed Documents` subfolders; the 13 superseded scan copies and the 5
+redundant Orsak duplicates were trashed (recoverable ~30 days); the manuscript `.docx`
+original was kept alongside its OCR'd PDF. Moves preserve Drive file IDs, so the index links
+still resolve. See `QABB_consolidation_instructions.md` for the final folder tree.
+(This became possible once Drive `update_file`/`trash_file` tools were available; earlier in
+the project no move/delete tool existed.)
 
 ## Known limitation
 A few small PDFs (e.g. `Sullivan_circa_1999_Managalas.pdf`) extract with fragmented

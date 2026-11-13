@@ -1,36 +1,42 @@
 {
-  "package": "MCA_Portal recovery package",
-  "version": "1.0.0",
-  "generated_at": "2026-11-07",
-  "source_collection": "Google Drive \u2014 'From PWM'",
-  "record_count": 51,
-  "ocr_status_counts": {
-    "recovered": 51
+  "package": "MCA_Portal handover",
+  "version": "1.1.0",
+  "generated_at": "2026-11-13",
+  "record_count": 77,
+  "actions": {
+    "recovered": 51,
+    "added": 20,
+    "renamed": 2,
+    "excluded": 4
   },
   "schema": [
+    "action",
     "drive_id",
     "current_url",
-    "year",
+    "collection",
     "title",
-    "page_count",
-    "size_bytes",
-    "ocr_status",
+    "old_title",
     "char_count",
-    "clean_ocr_text"
+    "note",
+    "clean_text"
   ],
-  "notes": "Drive IDs/URLs unchanged. Join on drive_id; replace indexed text with clean_ocr_text.",
+  "notes": "Join on drive_id. Apply per-record 'action'. Supersedes v1.0.0.",
   "files": {
-    "MCA_portal_package.json": {
-      "sha256": "38aeac1704736073c556efaba5dfb2137640d32dadf482bd914c7d5b84421387",
-      "bytes": 3250965
+    "MCA_portal_handover.json": {
+      "sha256": "482968688149490e8a338d87a3aec20ab99da5c690a5e085e8e5f667125d87f0",
+      "bytes": 3451658
     },
-    "MCA_portal_package.csv": {
-      "sha256": "23d5bbc7f879a7bf51c607b81f06d23b4d8a245218aa59b482b115afe04ff2b9",
-      "bytes": 3142010
+    "MCA_portal_handover.csv": {
+      "sha256": "00f981fa8a8700dfc5380991c2b0f1ce0f8b148e111adfcac60737923c2ce692",
+      "bytes": 3335920
     },
-    "README_MCA_portal_package.md": {
-      "sha256": "61f80cfa37c7b48c2396c0c4b4e205c87eacc14f8019e827b81345124f7767e3",
-      "bytes": 2934
+    "CHANGELOG.md": {
+      "sha256": "a6f6db43dbe4ae98c548e284b9a6f0372a36c88dc934390906a84edde08c802f",
+      "bytes": 1851
+    },
+    "exclusions.json": {
+      "sha256": "3ae58e8274ce4d83ceb6350efe611631bd187cc861bd1464a4aa828850aa6613",
+      "bytes": 1100
     }
   }
 }

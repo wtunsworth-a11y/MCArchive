@@ -1,42 +1,34 @@
 {
-  "package": "MCA_Portal handover",
+  "package": "MCA_Portal handover package",
   "version": "1.1.0",
   "generated_at": "2026-11-13",
-  "record_count": 77,
-  "actions": {
+  "record_count": 70,
+  "status_counts": {
     "recovered": 51,
-    "added": 20,
-    "renamed": 2,
-    "excluded": 4
+    "added_this_session": 19
   },
   "schema": [
-    "action",
     "drive_id",
     "current_url",
     "collection",
     "title",
-    "old_title",
     "char_count",
-    "note",
+    "status",
     "clean_text"
   ],
-  "notes": "Join on drive_id. Apply per-record 'action'. Supersedes v1.0.0.",
+  "notes": "Join on drive_id; replace indexed text with clean_text. Excludes O_alexandrae_MANUSCRIPT (see exclusions.json).",
   "files": {
-    "MCA_portal_handover.json": {
-      "sha256": "482968688149490e8a338d87a3aec20ab99da5c690a5e085e8e5f667125d87f0",
-      "bytes": 3451658
+    "MCA_portal_package.json": {
+      "sha256": "f399f51a495633ae227c6d3353bfa7a22cec04f8f44a3fd00b3104fd9c0e478a",
+      "bytes": 3440975
     },
-    "MCA_portal_handover.csv": {
-      "sha256": "00f981fa8a8700dfc5380991c2b0f1ce0f8b148e111adfcac60737923c2ce692",
-      "bytes": 3335920
+    "MCA_portal_package.csv": {
+      "sha256": "fabca79a473fdfb82c3b86b93906b9e25e1153ce947310c5c9e1a82ecebab220",
+      "bytes": 3327574
     },
-    "CHANGELOG.md": {
-      "sha256": "a6f6db43dbe4ae98c548e284b9a6f0372a36c88dc934390906a84edde08c802f",
-      "bytes": 1851
-    },
-    "exclusions.json": {
-      "sha256": "3ae58e8274ce4d83ceb6350efe611631bd187cc861bd1464a4aa828850aa6613",
-      "bytes": 1100
+    "README_MCA_portal_package.md": {
+      "sha256": "57a24894496c04014f5eab07839168650debf0ef3910b6e5ac07215b8383e702",
+      "bytes": 2808
     }
   }
 }

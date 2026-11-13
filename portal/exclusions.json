@@ -1,0 +1,31 @@
+{
+  "policy": "Exclude from ALL searchable indexes, crosswalks, portal packages and conversions. Do not OCR, convert, extract text, or list. Leave the file in place.",
+  "reason": "Licensed to the project but copyrighted and NOT shareable/redistributable.",
+  "documents": [
+    {
+      "name": "O_alexandrae_MANUSCRIPT.docx",
+      "copies": [
+        {
+          "id": "18gFTYxwtcYTAsKB6440oY1mPtRVUJrDM",
+          "title": "O_alexandrae_MANUSCRIPT_OCR.pdf",
+          "parentId": "1WhmbUht5cNe2EqDACBYeNClmADZJwJlP"
+        },
+        {
+          "id": "1XSw_k5rICGE_pl8t8EyjcxVMqJW_NyOg",
+          "title": "O_alexandrae_MANUSCRIPT.docx",
+          "parentId": "1WhmbUht5cNe2EqDACBYeNClmADZJwJlP"
+        },
+        {
+          "id": "1l6M26vMyw0wSJrgLTwdU6JMKN_lt7WmT",
+          "title": "O_alexandrae_MANUSCRIPT.docx",
+          "parentId": "1m0rsNZb4Z8xinEr8fl-Glnfug2WSxuhv"
+        },
+        {
+          "id": "10cBX0Kq-HtE6vZQRwuwSJjKcvzm_hu1y",
+          "title": "._O_alexandrae_MANUSCRIPT.docx",
+          "parentId": "1nhft-WEPd4qe5UxVdDAYQ0JHYyGMQ-Ii"
+        }
+      ]
+    }
+  ]
+}
